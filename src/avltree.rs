@@ -53,7 +53,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// tree.insert(3,"c");
     /// assert_eq!(tree.height(),2);
     /// tree.insert(4,"d");
-    /// assert_eq!(tree.height(),2);
+    /// assert_eq!(tree.height(),3);
     /// ```
     pub fn height(&self) -> i32 {
         match self.0 {
@@ -101,8 +101,10 @@ impl<K: Ord, V> AvlTree<K,V> {
         //move left child out of grandparent
         let mut parent_node = grandparent_node.as_mut().unwrap().left.0.take();
         //move parent's right to grandparent's left
+                println!("here");
         grandparent_node.as_mut().unwrap().left.0 = parent_node.as_mut().unwrap().right.0.take();
         //move grandparent to parent's right
+                println!("here");
         parent_node.as_mut().unwrap().right.0 = grandparent_node;
         //move parent into self
         self.0 = parent_node;
@@ -200,19 +202,19 @@ impl<K: Ord, V> AvlTree<K,V> {
             //if left subtree is left leaning or balanced, then right rotate, else
             //left-right rotate
             if self.0.as_mut().unwrap().left.check_balance() <= 0 {
-                self.left_rot();    
+                self.right_rot();    
             }
             else {
-                self.right_left_rot();
+                self.left_right_rot();
             }
         }
         //too right leaning
         else if balance == 2 {
             if self.0.as_mut().unwrap().right.check_balance() >= 0 {
-                self.right_rot();    
+                self.left_rot();    
             }
             else {
-                self.left_right_rot();
+                self.right_left_rot();
             }
 
         };
@@ -333,5 +335,27 @@ impl<K: Ord, V> AvlTree<K,V> {
     ///
     pub fn iter(&self) -> Iter<K,V> {
        panic!("Not Done!!!")
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use avltree::AvlTree;
+
+    #[test]
+    fn test_insert() {
+
+        let mut tree = AvlTree::new();
+        for num in 1..100 {
+            assert_eq!(tree.insert(num, num),None);
+        }
+        //ensure self balancing is working.
+        //ceil log2(100) == 7, so height must be <= 7
+        assert!(tree.height() <= 7);
+
+        assert_eq!(tree.insert(5,30), Some(5));
+
+
     }
 }
