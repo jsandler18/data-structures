@@ -317,7 +317,20 @@ impl<K: Ord, V> AvlTree<K,V> {
     ///  assert!(!tree.contains_key(&2));
     ///
     pub fn contains_key(&self, key: &K) -> bool {
-        false
+        match self.0 {
+            None => false,
+            Some(ref node) => {
+                if *key == node.key {
+                    true
+                }
+                else if *key < node.key {
+                    node.left.contains_key(key)
+                }
+                else {
+                    node.right.contains_key(key)
+                }
+            }
+        }
     }
 
     /// Gives an iterator over the key-value pairs in the tree, sorted by key.
@@ -354,7 +367,12 @@ mod test {
         //ceil log2(100) == 7, so height must be <= 7
         assert!(tree.height() <= 7);
 
+        //check reinserting returns right thing
         assert_eq!(tree.insert(5,30), Some(5));
+        assert_eq!(tree.insert(5,35), Some(30));
+        assert_eq!(tree.insert(99,35), Some(99));
+        assert_eq!(tree.insert(101,35), None);
+
 
 
     }
