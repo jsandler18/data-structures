@@ -1,16 +1,19 @@
 //! A self balancing binary tree
 use std::cmp::Ord;
+use std::cmp::max;
+use std::mem::replace;
+use std::mem::swap;
 
 struct AvlNode<K: Ord, V> {
     key: K,
     val: V,
-    height: u32,
-    left: Option<Box<AvlNode<K,V>>>,
-    right: Option<Box<AvlNode<K,V>>>
+    height: i32,
+    left: AvlTree<K,V>,
+    right: AvlTree<K,V>
 }
 
 /// A map based on a binary tree that self balances using the AVL algorithm
-pub struct AvlTree<K: Ord, V> (Option<AvlNode<K,V>>);
+pub struct AvlTree<K: Ord, V> (Option<Box<AvlNode<K,V>>>);
 
 /// A struct used to iterate over values of the AvlTree
 pub struct Iter<'a, K: 'a, V: 'a> {
@@ -27,7 +30,105 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a,K, V> {
     }
 }
 
+
 impl<K: Ord, V> AvlTree<K,V> {
+
+    /// Returns the height of the tree.
+    /// The height is defined as The number of Nodes
+    /// on the longest path from the root to any leaf.
+    /// Since the tree is self balancing, the height should
+    /// be about log2(n) plus or minus 1
+    ///
+    /// #Examples
+    /// ```
+    /// use ds::avltree::AvlTree;
+    ///
+    /// let mut tree = AvlTree::new();
+    ///
+    /// assert_eq!(tree.height(),0);
+    /// tree.insert(1,"a");
+    /// assert_eq!(tree.height(),1);
+    /// tree.insert(2,"b");
+    /// assert_eq!(tree.height(),2);
+    /// tree.insert(3,"c");
+    /// assert_eq!(tree.height(),2);
+    /// tree.insert(4,"d");
+    /// assert_eq!(tree.height(),2);
+    /// ```
+    pub fn height(&self) -> i32 {
+        match self.0 {
+            None => 0,
+            Some(ref node) => node.height
+        }
+    }
+    ///checks the balance of the tree from this node.
+    ///the magnitude of the result idicates how unbalanced the tree is,
+    ///with 0 being balanced, 1 being unbalance of 1, and so on.
+    ///the sign indicates which direction the balance leans.
+    ///Negative isa left leaning tree, positive is right leaning.
+    fn check_balance(&self) -> i32 {
+        match self.0 {
+            None => 0,
+            Some(ref node) => node.right.height() - node.left.height()
+        }
+    }
+
+    ///updates this subtree's heights. returns the height of the tree after updating
+    fn update_height(&mut self) -> i32{
+        match self.0 {
+            None => 0,
+            Some(ref mut node) => {
+                node.height = max(node.left.update_height(),node.right.update_height()) + 1;
+                node.height
+            }
+
+        }
+    }
+    ///updates this node's height.
+    fn update_one_height(&mut self) {
+        match self.0 {
+            None => (),
+            Some(ref mut node) => {
+                node.height = max(node.left.height(),node.right.height()) + 1;
+            }
+
+        }
+    }
+
+    fn right_rot(&mut self) {
+        //move gradparent out of self
+        let mut grandparent_node = self.0.take();
+        //move left child out of grandparent
+        let mut parent_node = grandparent_node.as_mut().unwrap().left.0.take();
+        //move parent's right to grandparent's left
+        grandparent_node.as_mut().unwrap().left.0 = parent_node.as_mut().unwrap().right.0.take();
+        //move grandparent to parent's right
+        parent_node.as_mut().unwrap().right.0 = grandparent_node;
+        //move parent into self
+        self.0 = parent_node;
+        //update heights based on new positions
+        self.update_height();
+    }
+
+    fn left_rot(&mut self) {
+        let mut grandparent_node = self.0.take();
+        let mut parent_node = grandparent_node.as_mut().unwrap().right.0.take();
+        grandparent_node.as_mut().unwrap().right.0 = parent_node.as_mut().unwrap().left.0.take();
+        parent_node.as_mut().unwrap().left.0 = grandparent_node;
+        self.0 = parent_node;
+        self.update_height();
+    }
+
+    fn right_left_rot(&mut self) {
+        self.0.as_mut().unwrap().right.right_rot();
+        self.left_rot();
+    }
+
+    fn left_right_rot(&mut self) {
+        self.0.as_mut().unwrap().left.left_rot();
+        self.right_rot();
+
+    }
 
     /// Creates a new empty AvlTree
     ///
@@ -41,7 +142,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// tree.insert(1,"a");
     /// ```
     pub fn new() -> Self {
-        AvlTree(None as Option<AvlNode<K,V>>)
+        AvlTree(None as Option<Box<AvlNode<K,V>>>)
     }
 
 
@@ -63,8 +164,66 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// assert_eq!(tree.insert(37, "c"), Some("b"));
     /// assert_eq!(tree.get(&37), Some(&"c"));
     pub fn insert(&mut self, key: K, val: V) -> Option<V> {
-        None
+        let result = match self.0 {
+            //if there is no data here, insert the key-value pair here and return None
+            None => {
+                self.0 = Some(Box::new(AvlNode {
+                    key: key,
+                    val: val,
+                    height: 1,
+                    left: AvlTree::new(),
+                    right: AvlTree::new()
+                }));
+                None
+            }
+            Some(ref mut root) => {
+                //if key exists, swap out values, return old value
+                if key == root.key {
+                    Some(replace(&mut root.val,val))
+                }
+                //go left
+                else if key < root.key {
+                    root.left.insert(key,val)
+                }
+                //go right
+                else {
+                    root.right.insert(key,val)
+                }
+            }
+        };
+        
+        //check balance
+        let balance = self.check_balance();
+        
+        //too left leaning
+        if balance == -2 {
+            //if left subtree is left leaning or balanced, then right rotate, else
+            //left-right rotate
+            if self.0.as_mut().unwrap().left.check_balance() <= 0 {
+                self.left_rot();    
+            }
+            else {
+                self.right_left_rot();
+            }
+        }
+        //too right leaning
+        else if balance == 2 {
+            if self.0.as_mut().unwrap().right.check_balance() >= 0 {
+                self.right_rot();    
+            }
+            else {
+                self.left_right_rot();
+            }
+
+        };
+        //else balanced, nothing to do
+
+        //update heights, not using update_height method to not do unneccesary recursions
+        self.update_one_height();
+
+        result
     }
+   
 
     /// checks if the tree is empty.
     ///
@@ -102,7 +261,20 @@ impl<K: Ord, V> AvlTree<K,V> {
     ///
     ///  ```
     pub fn get(&self, key: &K) -> Option<&V> {
-        None
+        match self.0 {
+            None => None,
+            Some(ref node) => {
+                if *key == node.key {
+                    Some(&node.val)
+                }
+                else if *key < node.key {
+                    node.left.get(key)
+                }
+                else {
+                    node.right.get(key)
+                }
+            }
+        }
     }
 
     /// Takes a referenece to something of type Key and
