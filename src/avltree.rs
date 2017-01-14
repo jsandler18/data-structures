@@ -1,6 +1,8 @@
 //! A self balancing binary tree
 use std::cmp::{Ord, Ordering, max};
 use std::mem::replace;
+use std::collections::VecDeque;
+
 
 struct AvlNode<K: Ord, V> {
     key: K,
@@ -15,16 +17,33 @@ pub struct AvlTree<K: Ord, V> (Option<Box<AvlNode<K,V>>>);
 
 /// A struct used to iterate over values of the AvlTree
 pub struct Iter<'a, K: 'a, V: 'a> {
-    //TODO
-    t1: &'a K,
-    t2: &'a V
+    queue: VecDeque<(&'a K,&'a V)>,
 }
 
-impl<'a, K: 'a, V: 'a> Iterator for Iter<'a,K, V> {
+impl<'a, K: 'a + Ord, V: 'a> Iter<'a,K, V> {
+
+    fn new(tree: &'a AvlTree<K,V>) -> Self {
+        let mut iter = Iter { 
+            queue: VecDeque::new(),
+        };
+        iter.init(tree);
+        iter
+    }
+
+    fn init(&mut self, tree: &'a AvlTree<K,V>) {
+        tree.0.as_ref().map(|node| {
+            self.init(&node.left);
+            self.queue.push_back((&node.key,&node.val));
+            self.init(&node.right);
+            0
+        });
+    }
+}
+impl<'a, K: 'a + Ord , V: 'a> Iterator for Iter<'a,K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-       Some((self.t1, self.t2))
+       self.queue.pop_front()
     }
 }
 
@@ -395,14 +414,14 @@ impl<K: Ord, V> AvlTree<K,V> {
     ///  assert_eq!(tree.iter().next().unwrap(), (&1, &"a"));
     ///
     pub fn iter(&self) -> Iter<K,V> {
-       panic!("Not Done!!!")
+       Iter::new(self)
     }
 }
 
 #[cfg(test)]
 mod test {
-
     use avltree::AvlTree;
+
 
     #[test]
     fn test_insert() {
@@ -438,6 +457,27 @@ mod test {
 
         println!("{}",tree.height());
         assert!(tree.height() <= 8);
+
+        assert_eq!(tree.remove(&50), Some(50));
+        assert_eq!(tree.remove(&500), None);
+        assert!(!tree.contains_key(&400));
+
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut tree = AvlTree::new();
+        for num in 1..1000 {
+            assert_eq!(tree.insert(num, num),None);
+        }
+
+        let mut c = 1;
+        //ensures the keys come back in order
+        for (key,val) in tree.iter() {
+            assert!(key == val);
+            assert!(*key == c);
+            c += 1;
+        }
 
     }
 }
