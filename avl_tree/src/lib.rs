@@ -58,7 +58,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     ///
     /// #Examples
     /// ```
-    /// use ds::avltree::AvlTree;
+    /// use avltree_map::AvlTree;
     ///
     /// let mut tree = AvlTree::new();
     ///
@@ -184,7 +184,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// #Examples
     ///
     /// ```
-    /// use ds::avltree::AvlTree;
+    /// use avltree_map::AvlTree;
     ///
     /// let mut tree = AvlTree::new();
     ///
@@ -202,7 +202,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// #Examples
     ///
     /// ```
-    /// use ds::avltree::AvlTree;
+    /// use avltree_map::AvlTree;
     ///
     /// let mut tree = AvlTree::new();
     ///
@@ -252,7 +252,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     ///  #Examples
     ///
     ///  ```
-    ///  use ds::avltree::AvlTree;
+    ///  use avltree_map::AvlTree;
     ///
     ///  let mut tree = AvlTree::new();
     ///
@@ -272,7 +272,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// #Examples
     ///
     ///  ```
-    ///  use ds::avltree::AvlTree;
+    ///  use avltree_map::AvlTree;
     ///
     ///  let mut tree = AvlTree::new();
     ///  tree.insert(37, "b");
@@ -307,7 +307,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// #Examples
     ///
     ///  ```
-    ///  use ds::avltree::AvlTree;
+    ///  use avltree_map::AvlTree;
     ///
     ///  let mut tree = AvlTree::new();
     ///  tree.insert(37, "b");
@@ -374,7 +374,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// #Examples
     ///
     ///  ```
-    ///  use ds::avltree::AvlTree;
+    ///  use avltree_map::AvlTree;
     ///
     ///  let mut tree = AvlTree::new();
     ///  tree.insert(37, "b");
@@ -405,7 +405,7 @@ impl<K: Ord, V> AvlTree<K,V> {
     /// #Examples
     ///
     ///  ```
-    ///  use ds::avltree::AvlTree;
+    ///  use avltree_map::AvlTree;
     ///
     ///  let mut tree = AvlTree::new();
     ///  tree.insert(37, "b");
@@ -420,7 +420,7 @@ impl<K: Ord, V> AvlTree<K,V> {
 
 #[cfg(test)]
 mod test {
-    use avltree::AvlTree;
+    use AvlTree;
 
 
     #[test]
