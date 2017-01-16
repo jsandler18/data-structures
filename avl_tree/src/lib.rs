@@ -18,23 +18,29 @@ pub struct AvlTree<K: Ord, V> (Option<Box<AvlNode<K,V>>>);
 /// A struct used to iterate over values of the AvlTree
 pub struct Iter<'a, K: 'a, V: 'a> {
     queue: VecDeque<(&'a K,&'a V)>,
+    forwards: bool
 }
 
 impl<'a, K: 'a + Ord, V: 'a> Iter<'a,K, V> {
 
-    fn new(tree: &'a AvlTree<K,V>) -> Self {
+    ///creates an iterator containing all elements between start and end, inclusive,
+    ///Unbounded if the None
+    fn new(tree: &'a AvlTree<K,V>, start: Option<&K>, end: Option<&K>, forwards: bool) -> Self {
         let mut iter = Iter { 
             queue: VecDeque::new(),
+            forwards: forwards
         };
-        iter.init(tree);
+        iter.init(tree, start, end);
         iter
     }
 
-    fn init(&mut self, tree: &'a AvlTree<K,V>) {
+    fn init(&mut self, tree: &'a AvlTree<K,V>, start: Option<&K>, end: Option<&K>) {
         tree.0.as_ref().map(|node| {
-            self.init(&node.left);
-            self.queue.push_back((&node.key,&node.val));
-            self.init(&node.right);
+            self.init(&node.left, start, end);
+            if (start.is_none() || *start.unwrap() <= node.key) && (end.is_none() || *end.unwrap() >= node.key) {
+                self.queue.push_back((&node.key,&node.val));
+            };
+            self.init(&node.right, start, end);
             0
         });
     }
@@ -43,7 +49,12 @@ impl<'a, K: 'a + Ord , V: 'a> Iterator for Iter<'a,K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-       self.queue.pop_front()
+        if self.forwards {
+            self.queue.pop_front()
+        } else {
+            self.queue.pop_back()
+        }
+
     }
 }
 
@@ -414,8 +425,69 @@ impl<K: Ord, V> AvlTree<K,V> {
     ///  assert_eq!(tree.iter().next().unwrap(), (&1, &"a"));
     ///
     pub fn iter(&self) -> Iter<K,V> {
-       Iter::new(self)
+       Iter::new(self, None, None, true)
     }
+
+    /// Gives an iterator over the key-value pairs in the tree, sorted by key, in reverse order.
+    ///
+    /// #Examples
+    ///
+    ///  ```
+    ///  use avltree_map::AvlTree;
+    ///
+    ///  let mut tree = AvlTree::new();
+    ///  tree.insert(37, "b");
+    ///  tree.insert(1,"a");
+    ///
+    ///  assert_eq!(tree.reverse_iter().next().unwrap(), (&37, &"b"));
+    ///
+    pub fn reverse_iter(&self) -> Iter<K,V> {
+       Iter::new(self, None, None, false)
+    }
+
+
+    /// Gives an iterator over the key-value pairs in the tree that fall within the given start and
+    /// end points (inclusive) in sorted order.  If None is given, then that side is unbounded.
+    ///
+    /// #Examples
+    ///
+    ///  ```
+    ///  use avltree_map::AvlTree;
+    ///
+    ///  let mut tree = AvlTree::new();
+    ///  tree.insert(1,"a");
+    ///  tree.insert(2,"a");
+    ///  tree.insert(3,"a");
+    ///  tree.insert(4,"a");
+    ///  tree.insert(5,"a");
+    ///
+    ///  assert_eq!(tree.range_iter(Some(&2), None).next().unwrap(), (&2, &"a"));
+    ///
+    pub fn range_iter(&self, start: Option<&K>, end: Option<&K> ) -> Iter<K,V> {
+       Iter::new(self, start, end, true)
+    }
+
+    /// Gives an iterator over the key-value pairs in the tree that fall within the given start and
+    /// end points (inclusive) in reverse sorted order.  If None is given, then that side is unbounded.
+    ///
+    /// #Examples
+    ///
+    ///  ```
+    ///  use avltree_map::AvlTree;
+    ///
+    ///  let mut tree = AvlTree::new();
+    ///  tree.insert(1,"a");
+    ///  tree.insert(2,"a");
+    ///  tree.insert(3,"a");
+    ///  tree.insert(4,"a");
+    ///  tree.insert(5,"a");
+    ///
+    ///  assert_eq!(tree.reverse_range_iter(None, Some(&3)).next().unwrap(), (&3, &"a"));
+    ///
+    pub fn reverse_range_iter(&self, start: Option<&K>, end: Option<&K> ) -> Iter<K,V> {
+       Iter::new(self, start, end, false)
+    }
+
 }
 
 #[cfg(test)]
@@ -469,7 +541,7 @@ mod test {
         let mut tree = AvlTree::new();
         for num in 1..1000 {
             assert_eq!(tree.insert(num, num),None);
-        }
+        };
 
         let mut c = 1;
         //ensures the keys come back in order
@@ -477,7 +549,41 @@ mod test {
             assert!(key == val);
             assert!(*key == c);
             c += 1;
+        };
+
+        c = 999;
+        for (key, _) in tree.reverse_iter() {
+            assert!(*key == c);
+            c -= 1;
+        };
+
+        c = 100;
+        for (key, _) in tree.range_iter(Some(&100), Some(&900)) {
+            assert!(*key == c);
+            c += 1;
         }
+        assert!(c == 901);
+
+        c = 100;
+        for (key, _) in tree.range_iter(Some(&100), None) {
+            assert!(*key == c);
+            c += 1;
+        }
+        assert!(c == 1000);
+
+        c = 900;
+        for (key, _) in tree.reverse_range_iter(Some(&100), Some(&900)) {
+            assert!(*key == c);
+            c -= 1;
+        }
+        assert!(c == 99);
+
+        c = 900;
+        for (key, _) in tree.reverse_range_iter(None, Some(&900)) {
+            assert!(*key == c);
+            c -= 1;
+        }
+        assert!(c == 0);
 
     }
 }
