@@ -1,0 +1,7 @@
+[package]
+name = "skiplist"
+version = "0.1.0"
+authors = ["Jake <jsandler18@gmail.com>"]
+
+[dependencies]
+rand = "*"
